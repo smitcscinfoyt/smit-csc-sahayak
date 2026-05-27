@@ -1,0 +1,241 @@
+<!--
+=======================================================
+  Smit AI Sahayak — Embeddable Widget
+  Copy the <script> tag below into your website's footer
+  Replace YOUR_API_DOMAIN with your deployed API URL
+  Set window.SmitCSCPrime = true if user is Prime Member
+=======================================================
+-->
+
+<!-- ✅ STEP 1: Paste this in your website <head> -->
+<style>
+  #smit-ai-widget-root { position: fixed; bottom: 0; right: 0; z-index: 99999; }
+  #smit-chat-bubble {
+    position: fixed; bottom: 24px; right: 24px; z-index: 99999;
+    width: 64px; height: 64px; border-radius: 50%;
+    background: linear-gradient(135deg, #2e004f, #5c009a);
+    border: 2px solid #ffd700;
+    box-shadow: 0 0 24px rgba(255,215,0,.3), 0 8px 32px rgba(46,0,79,.6);
+    cursor: pointer; display: flex; align-items: center; justify-content: center;
+    transition: transform .2s;
+  }
+  #smit-chat-bubble:hover { transform: scale(1.08); }
+  #smit-chat-bubble svg { width:28px; height:28px; }
+  #smit-chat-window {
+    display: none; position: fixed; bottom: 110px; right: 24px; z-index: 99998;
+    width: min(390px, calc(100vw - 2rem));
+    height: min(580px, calc(100vh - 160px));
+    border-radius: 20px;
+    background: rgba(15,0,30,.92);
+    backdrop-filter: blur(28px);
+    border: 1.5px solid rgba(255,215,0,.25);
+    box-shadow: 0 20px 60px rgba(0,0,0,.7);
+    flex-direction: column; overflow: hidden;
+    font-family: 'Noto Sans Gujarati', sans-serif;
+  }
+  #smit-chat-window.open { display: flex; animation: smitFadeIn .3s ease; }
+  @keyframes smitFadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  #smit-chat-header {
+    display: flex; align-items: center; gap:12px; padding:12px 16px;
+    background: linear-gradient(135deg, rgba(46,0,79,.9), rgba(80,0,140,.7));
+    border-bottom: 1px solid rgba(255,215,0,.2); flex-shrink:0;
+  }
+  #smit-chat-header .avatar {
+    width:40px; height:40px; border-radius:50%; flex-shrink:0;
+    background: linear-gradient(135deg,#ffd700,#ffaa00);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow: 0 0 16px rgba(255,215,0,.4);
+  }
+  #smit-chat-header .title { font-weight:700; font-size:14px; color:#ffd700; }
+  #smit-chat-header .status { font-size:11px; color:#4ade80; display:flex; align-items:center; gap:6px; margin-top:2px; }
+  #smit-chat-header .status span { width:6px;height:6px;border-radius:50%;background:#4ade80;display:inline-block;animation:pulse 2s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1}50%{opacity:.4} }
+  #smit-messages { flex:1; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:10px; }
+  .smit-msg { display:flex; max-width:80%; font-size:13px; line-height:1.6; border-radius:16px; padding:10px 14px; }
+  .smit-msg.user { align-self:flex-end; background:linear-gradient(135deg,#3d0070,#5c009a); color:#ffd700; border:1px solid rgba(255,215,0,.2); border-bottom-right-radius:4px; }
+  .smit-msg.bot  { align-self:flex-start; background:rgba(255,255,255,.06); color:rgba(255,215,0,.9); border:1px solid rgba(255,215,0,.1); border-bottom-left-radius:4px; }
+  #smit-input-bar {
+    display:flex; gap:8px; align-items:center; padding:12px;
+    border-top:1px solid rgba(255,215,0,.15); background:rgba(20,0,40,.6); flex-shrink:0;
+  }
+  #smit-input {
+    flex:1; padding:10px 16px; font-size:13px; border-radius:12px; outline:none;
+    background:rgba(255,255,255,.06); border:1.5px solid rgba(255,215,0,.2);
+    color:#ffd700; caret-color:#ffd700; font-family:inherit;
+  }
+  #smit-send-btn {
+    width:40px;height:40px;border-radius:12px;border:none;cursor:pointer;
+    background:linear-gradient(135deg,#ffd700,#ffaa00);
+    display:flex;align-items:center;justify-content:center;
+    transition:transform .2s;
+  }
+  #smit-send-btn:hover{transform:scale(1.1);}
+  #smit-footer { text-align:center;padding:6px;font-size:10px;color:rgba(255,215,0,.3);border-top:1px solid rgba(255,215,0,.08); }
+  #smit-upgrade-wall {
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px 16px;gap:16px;text-align:center;
+  }
+  .smit-plan-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:8px;width:100%; }
+  .smit-plan {
+    border-radius:12px;padding:12px 8px;text-align:center;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,215,0,.15);
+  }
+  .smit-plan.best { background:rgba(255,215,0,.1);border-color:rgba(255,215,0,.4); }
+  .smit-plan .price{font-weight:700;font-size:15px;color:#ffd700;}
+  .smit-plan .label{font-size:10px;color:rgba(255,215,0,.6);}
+  .smit-upgrade-btn {
+    width:100%;padding:12px;border-radius:12px;border:none;cursor:pointer;
+    background:linear-gradient(135deg,#ffd700,#ffaa00);color:#2e004f;
+    font-weight:700;font-size:14px;font-family:inherit;
+    box-shadow:0 4px 20px rgba(255,215,0,.3);transition:transform .2s;
+    text-decoration:none;display:block;
+  }
+  .smit-upgrade-btn:hover{transform:scale(1.02);}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;700&display=swap" rel="stylesheet">
+
+<!-- ✅ STEP 2: Paste this just before </body> -->
+<div id="smit-chat-window">
+  <div id="smit-chat-header">
+    <div class="avatar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+        <path d="M12 2C6.48 2 2 5.92 2 10.8c0 3.16 1.76 5.96 4.4 7.56L4 22l4.28-2.04C9.44 20.32 10.7 20.6 12 20.6c5.52 0 10-3.92 10-8.8S17.52 2 12 2z" fill="#2e004f"/>
+        <circle cx="8.5" cy="10.5" r="1.2" fill="#ffd700"/>
+        <circle cx="12"  cy="10.5" r="1.2" fill="#ffd700"/>
+        <circle cx="15.5" cy="10.5" r="1.2" fill="#ffd700"/>
+      </svg>
+    </div>
+    <div>
+      <div class="title">Smit AI Sahayak</div>
+      <div class="status"><span></span>ઓનલાઈન</div>
+    </div>
+  </div>
+  <div id="smit-messages"></div>
+  <div id="smit-input-bar" style="display:none;">
+    <input id="smit-input" placeholder="ગુજરાતીમાં લખો..." autocomplete="off"/>
+    <button id="smit-send-btn" onclick="smitSend()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+        <path d="M22 2L11 13" stroke="#2e004f" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M22 2L15 22 11 13 2 9l20-7z" stroke="#2e004f" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+  </div>
+  <div id="smit-footer">Smit CSC Info — Powered by Gemini AI</div>
+</div>
+
+<button id="smit-chat-bubble" onclick="smitToggle()">
+  <svg viewBox="0 0 24 24" fill="none">
+    <path d="M12 2C6.48 2 2 5.92 2 10.8c0 3.16 1.76 5.96 4.4 7.56L4 22l4.28-2.04C9.44 20.32 10.7 20.6 12 20.6c5.52 0 10-3.92 10-8.8S17.52 2 12 2z" fill="#ffd700"/>
+    <circle cx="8.5"  cy="10.5" r="1.2" fill="#2e004f"/>
+    <circle cx="12"   cy="10.5" r="1.2" fill="#2e004f"/>
+    <circle cx="15.5" cy="10.5" r="1.2" fill="#2e004f"/>
+  </svg>
+</button>
+
+<script>
+(function() {
+  // ── CONFIG — change these for your deployment ──────────────────────────
+  var API_URL = 'https://ayvr76vs.riker.replit.dev/api/chat';
+  // Set window.SmitCSCPrime = true in your site when user is logged-in Prime Member
+  // ───────────────────────────────────────────────────────────────────────
+
+  var history = [];
+  var isOpen  = false;
+
+  window.smitToggle = function() {
+    isOpen = !isOpen;
+    var win = document.getElementById('smit-chat-window');
+    if (isOpen) {
+      win.classList.add('open');
+      smitInit();
+    } else {
+      win.classList.remove('open');
+    }
+  };
+
+  function smitInit() {
+    var msgs = document.getElementById('smit-messages');
+    if (msgs.childElementCount > 0) return;
+    var isPrime = !!(window.SmitCSCPrime);
+    if (!isPrime) {
+      showUpgradeWall();
+    } else {
+      showWelcome();
+      document.getElementById('smit-input-bar').style.display = 'flex';
+      document.getElementById('smit-input').addEventListener('keydown', function(e){
+        if (e.key === 'Enter') smitSend();
+      });
+    }
+  }
+
+  function showWelcome() {
+    addMsg('bot', 'નમસ્કાર! હું <strong>Smit AI Sahayak</strong> છું 🙏<br>CSC સ્કીમ, document list, સ&#2352;&#2381;&#2325;&#2366;&#2352;ી &#2351;&#2379;&#2332;&#2344;&#2366; — &#2327;&#2369;&#2332;&#2352;&#2366;&#2340;&#2368;&#2350;&#2366;&#2306; &#2346;&#2370;&#2331;&#2379;!');
+  }
+
+  function showUpgradeWall() {
+    var msgs = document.getElementById('smit-messages');
+    msgs.innerHTML = '<div id="smit-upgrade-wall">' +
+      '<div style="font-size:32px">👑</div>' +
+      '<div><p style="font-weight:700;color:#ffd700;margin:0 0 4px">Prime Members Only</p>' +
+      '<p style="font-size:12px;color:rgba(255,215,0,.6);margin:0">Advanced AI Sahayak &#2360;&#2369;&#2357;&#2367;&#2343;&#2366; &#2347;&#2325;&#2381;&#2340; Prime Members &#2350;&#2366;&#2335;&#2375; &#2313;&#2346;&#2354;&#2348;&#2381;&#2343; &#2331;&#2375;</p></div>' +
+      '<div class="smit-plan-grid">' +
+      '<div class="smit-plan"><div class="label">&#2350;&#2366;&#2360;&#2367;&#2325;</div><div class="price">&#8377;299</div><div class="label">/&#2350;&#2366;&#2360;</div></div>' +
+      '<div class="smit-plan best"><div class="label" style="color:#ffd700;font-size:9px;font-weight:700">BEST</div><div class="label">&#2340;&#2381;&#2352;&#2367;&#2350;&#2366;&#2360;&#2367;&#2325;</div><div class="price">&#8377;799</div><div class="label">/3 &#2350;&#2361;&#2367;&#2344;&#2366;</div></div>' +
+      '<div class="smit-plan"><div class="label">&#2357;&#2366;&#2352;&#2381;&#2359;&#2367;&#2325;</div><div class="price">&#8377;2,499</div><div class="label">/&#2357;&#2352;&#2381;&#2359;</div></div>' +
+      '</div>' +
+      '<a href="https://chat.whatsapp.com/CS5vmo9R3yXKxlvBHP0EYh?mode=gi_t" target="_blank" class="smit-upgrade-btn">&#128640; Prime Upgrade &#2325;&#2352;&#2379;</a>' +
+      '</div>';
+  }
+
+  function addMsg(role, html) {
+    var msgs = document.getElementById('smit-messages');
+    var div = document.createElement('div');
+    div.className = 'smit-msg ' + role;
+    div.innerHTML = html;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+
+  window.smitSend = function() {
+    var input = document.getElementById('smit-input');
+    var text  = input.value.trim();
+    if (!text) return;
+    addMsg('user', text);
+    history.push({ role:'user', parts:[{text:text}] });
+    input.value = '';
+    addMsg('bot', '<em style="opacity:.6">&#2335;&#2366;&#2312;&#2346; &#2325;&#2352;&#2375; &#2331;&#2375;...</em>');
+    var msgs = document.getElementById('smit-messages');
+    var dots = msgs.lastChild;
+
+    fetch(API_URL, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message: text, history: history.slice(0,-1), isPrime: !!(window.SmitCSCPrime) })
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data) {
+      dots.remove();
+      var reply = data.reply || 'ক্ষমা &#2325;&#2352;&#2358;&#2379;, &#2340;&#2381;&#2352;&#2369;&#2335;&#2367; &#2310;&#2357;&#2368;.';
+      addMsg('bot', reply.replace(/\n/g,'<br>'));
+      history.push({ role:'model', parts:[{text:reply}] });
+    })
+    .catch(function(){
+      dots.remove();
+      addMsg('bot', '&#2325;&#2381;&#2359;&#2350;&#2366; &#2325;&#2352;&#2358;&#2379;, &#2360;&#2352;&#2381;&#2357;&#2352; &#2360;&#2366;&#2341;&#2375; &#2332;&#2379;&#2337;&#2366;&#2339; &#2344; &#2341;&#2312;.');
+    });
+  };
+})();
+</script>
+
+<!--
+=======================================================
+  HOW TO CONTROL PRIME ACCESS on your website:
+  
+  Set this BEFORE the script above loads:
+  <script>
+    // If user is Prime Member (check your session/database):
+    window.SmitCSCPrime = true;  // Prime Member — full AI access
+    // window.SmitCSCPrime = false; // Non-Prime — shows upgrade wall
+  </script>
+=======================================================
+-->
