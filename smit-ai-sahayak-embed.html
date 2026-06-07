@@ -1,13 +1,13 @@
 <!--
 =======================================================
-  Smit AI Sahayak — Embeddable Widget
+  Smit AI Sahayak â Embeddable Widget
   Copy the <script> tag below into your website's footer
   Replace YOUR_API_DOMAIN with your deployed API URL
   Set window.SmitCSCPrime = true if user is Prime Member
 =======================================================
 -->
 
-<!-- ✅ STEP 1: Paste this in your website <head> -->
+<!-- â STEP 1: Paste this in your website <head> -->
 <style>
   #smit-ai-widget-root { position: fixed; bottom: 0; right: 0; z-index: 99999; }
   #smit-chat-bubble {
@@ -94,7 +94,7 @@
 </style>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;600;700&display=swap" rel="stylesheet">
 
-<!-- ✅ STEP 2: Paste this just before </body> -->
+<!-- â STEP 2: Paste this just before </body> -->
 <div id="smit-chat-window">
   <div id="smit-chat-header">
     <div class="avatar">
@@ -107,12 +107,12 @@
     </div>
     <div>
       <div class="title">Smit AI Sahayak</div>
-      <div class="status"><span></span>ઓનલાઈન</div>
+      <div class="status"><span></span>àªàª¨àª²àª¾àªàª¨</div>
     </div>
   </div>
   <div id="smit-messages"></div>
   <div id="smit-input-bar" style="display:none;">
-    <input id="smit-input" placeholder="ગુજરાતીમાં લખો..." autocomplete="off"/>
+    <input id="smit-input" placeholder="àªà«àªàª°àª¾àª¤à«àª®àª¾àª àª²àªà«..." autocomplete="off"/>
     <button id="smit-send-btn" onclick="smitSend()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
         <path d="M22 2L11 13" stroke="#2e004f" stroke-width="2.5" stroke-linecap="round"/>
@@ -120,7 +120,7 @@
       </svg>
     </button>
   </div>
-  <div id="smit-footer">Smit CSC Info — Powered by Gemini AI</div>
+  <div id="smit-footer">Smit CSC Info â Powered by Gemini AI</div>
 </div>
 
 <button id="smit-chat-bubble" onclick="smitToggle()">
@@ -134,10 +134,13 @@
 
 <script>
 (function() {
-  // ── CONFIG — change these for your deployment ──────────────────────────
-  var API_URL = 'https://ayvr76vs.riker.replit.dev/api/chat';
+  // ââ CONFIG â change these for your deployment ââââââââââââââââââââââââââ
+  // ✅ UPDATE THIS: Replace YOUR_VM_IP with your Oracle VM's public IP address
+    // Example: 'http://152.67.xx.xx:5001/api/chat'
+    // Or with domain: 'https://api.smitcscinfo.in/api/chat'
+    var API_URL = 'http://YOUR_VM_IP:5001/api/chat';
   // Set window.SmitCSCPrime = true in your site when user is logged-in Prime Member
-  // ───────────────────────────────────────────────────────────────────────
+  // âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ
 
   var history = [];
   var isOpen  = false;
@@ -169,13 +172,13 @@
   }
 
   function showWelcome() {
-    addMsg('bot', 'નમસ્કાર! હું <strong>Smit AI Sahayak</strong> છું 🙏<br>CSC સ્કીમ, document list, સ&#2352;&#2381;&#2325;&#2366;&#2352;ી &#2351;&#2379;&#2332;&#2344;&#2366; — &#2327;&#2369;&#2332;&#2352;&#2366;&#2340;&#2368;&#2350;&#2366;&#2306; &#2346;&#2370;&#2331;&#2379;!');
+    addMsg('bot', 'àª¨àª®àª¸à«àªàª¾àª°! àª¹à«àª <strong>Smit AI Sahayak</strong> àªà«àª ð<br>CSC àª¸à«àªà«àª®, document list, àª¸&#2352;&#2381;&#2325;&#2366;&#2352;à« &#2351;&#2379;&#2332;&#2344;&#2366; â &#2327;&#2369;&#2332;&#2352;&#2366;&#2340;&#2368;&#2350;&#2366;&#2306; &#2346;&#2370;&#2331;&#2379;!');
   }
 
   function showUpgradeWall() {
     var msgs = document.getElementById('smit-messages');
     msgs.innerHTML = '<div id="smit-upgrade-wall">' +
-      '<div style="font-size:32px">👑</div>' +
+      '<div style="font-size:32px">ð</div>' +
       '<div><p style="font-weight:700;color:#ffd700;margin:0 0 4px">Prime Members Only</p>' +
       '<p style="font-size:12px;color:rgba(255,215,0,.6);margin:0">Advanced AI Sahayak &#2360;&#2369;&#2357;&#2367;&#2343;&#2366; &#2347;&#2325;&#2381;&#2340; Prime Members &#2350;&#2366;&#2335;&#2375; &#2313;&#2346;&#2354;&#2348;&#2381;&#2343; &#2331;&#2375;</p></div>' +
       '<div class="smit-plan-grid">' +
@@ -215,7 +218,7 @@
     .then(function(r){ return r.json(); })
     .then(function(data) {
       dots.remove();
-      var reply = data.reply || 'ক্ষমা &#2325;&#2352;&#2358;&#2379;, &#2340;&#2381;&#2352;&#2369;&#2335;&#2367; &#2310;&#2357;&#2368;.';
+      var reply = data.reply || 'à¦à§à¦·à¦®à¦¾ &#2325;&#2352;&#2358;&#2379;, &#2340;&#2381;&#2352;&#2369;&#2335;&#2367; &#2310;&#2357;&#2368;.';
       addMsg('bot', reply.replace(/\n/g,'<br>'));
       history.push({ role:'model', parts:[{text:reply}] });
     })
@@ -234,8 +237,8 @@
   Set this BEFORE the script above loads:
   <script>
     // If user is Prime Member (check your session/database):
-    window.SmitCSCPrime = true;  // Prime Member — full AI access
-    // window.SmitCSCPrime = false; // Non-Prime — shows upgrade wall
+    window.SmitCSCPrime = true;  // Prime Member â full AI access
+    // window.SmitCSCPrime = false; // Non-Prime â shows upgrade wall
   </script>
 =======================================================
 -->
