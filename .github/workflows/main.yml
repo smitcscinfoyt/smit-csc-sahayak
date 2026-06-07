@@ -1,0 +1,42 @@
+name: Deploy Smit AI Sahayak
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Oracle VM
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT }}
+          script: |
+            export GEMINI_API_KEY="${{ secrets.ENV_GEMINI_API_KEY }}"
+            export DATABASE_URL="${{ secrets.ENV_SAHAYAK_DATABASE_URL }}"
+            export PORT="5001"
+
+            if ! command -v docker &> /dev/null; then
+              curl -fsSL https://get.docker.com | sudo sh
+            fi
+            sudo systemctl enable docker 2>/dev/null || true
+            sudo systemctl start  docker 2>/dev/null || true
+
+            if [ ! -d "$HOME/smit-csc-sahayak/.git" ]; then
+              git clone --branch main https://github.com/smitcscinfoyt/smit-csc-sahayak.git "$HOME/smit-csc-sahayak"
+            fi
+
+            bash "$HOME/smit-csc-sahayak/deploy.sh"
