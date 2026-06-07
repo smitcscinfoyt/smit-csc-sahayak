@@ -1,0 +1,26 @@
+{
+    "name": "@workspace/api-server",
+    "version": "0.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+      "dev": "tsx watch src/index.ts",
+      "build": "node ./build.mjs",
+      "start": "node --enable-source-maps ./dist/index.mjs",
+      "typecheck": "tsc -p tsconfig.json --noEmit"
+    },
+    "dependencies": {
+      "@google/generative-ai": "^0.24.0",
+      "cors": "^2.8.6",
+      "dotenv": "^16.4.7",
+      "express": "^5.2.1"
+    },
+    "devDependencies": {
+      "@types/cors": "^2.8.19",
+      "@types/express": "^5.0.6",
+      "@types/node": "^25.3.3",
+      "esbuild": "0.27.3",
+      "tsx": "^4.21.0"
+    }
+  }
+  
