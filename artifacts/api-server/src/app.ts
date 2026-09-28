@@ -23,7 +23,7 @@ if (existsSync(knowledgePath)) {
 const SYSTEM_PROMPT = `You are Smit AI Sahayak, a helpful AI assistant for Smit CSC Info.
 
   IMPORTANT FACTS — always follow exactly:
-  1. Smit CSC Info ના owner/founder/creator: SAGAR Kindarakhediya. Never say "Smit Patel" or any other name.
+  1. Smit CSC Info — owner/founder/creator: SAGAR Kindarakhediya. Never say "Smit Patel" or any other name.
   2. Contact info — always give these social media links, NOT the CSC government helpline:
      Facebook: https://www.facebook.com/share/1KQkXYXKcQ/
      Instagram: https://www.instagram.com/smit_csc_info
@@ -39,6 +39,37 @@ const SYSTEM_PROMPT = `You are Smit AI Sahayak, a helpful AI assistant for Smit 
 
   Knowledge Base:
   ${knowledgeBase}`
+
+// --- STARTUP PROVIDER CHECK ---
+(async function verifyProviders() {
+  const sambaKey = process.env['SAMBANOVA_API_KEY'];
+  if (sambaKey) {
+    try {
+      const res = await fetch('https://api.sambanova.ai/v1/models', {
+        headers: { Authorization: `Bearer ${sambaKey}` },
+        signal: AbortSignal.timeout(5000)
+      });
+      console.log(`[Startup] SambaNova models check: HTTP ${res.status}`);
+    } catch (err: any) {
+      console.warn(`[Startup] SambaNova models check failed: ${err.message}`);
+    }
+  }
+
+  const geminiKey = process.env['GEMINI_API_KEY'] || process.env['AI_INTEGRATIONS_GEMINI_API_KEY'];
+  if (geminiKey) {
+    try {
+      const geminiBaseUrl = process.env['AI_INTEGRATIONS_GEMINI_BASE_URL'] || 'https://generativelanguage.googleapis.com/v1beta';
+      // no keys in URL - using x-goog-api-key header
+      const res = await fetch(`${geminiBaseUrl.replace(/\\/$/, '')}/models`, {
+        headers: { 'x-goog-api-key': geminiKey },
+        signal: AbortSignal.timeout(5000)
+      });
+      console.log(`[Startup] Gemini models check: HTTP ${res.status}`);
+    } catch (err: any) {
+      console.warn(`[Startup] Gemini models check failed: ${err.message}`);
+    }
+  }
+})();
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -56,8 +87,13 @@ app.get('/api/health', (_req, res) => {
 });
 
 // Chat endpoint — called by the embed widget and CSC Info proxy
-// Provider waterfall: SambaNova → Gemini
+// Provider waterfall: SambaNova -> Gemini
 app.post('/api/chat', async (req, res) => {
+  const requestStartTime = Date.now();
+  const OVERALL_DEADLINE_MS = 22000;
+  
+  const getRemainingTime = () => Math.max(0, OVERALL_DEADLINE_MS - (Date.now() - requestStartTime));
+
   const sambaKey = process.env['SAMBANOVA_API_KEY'];
   const geminiKey = process.env['GEMINI_API_KEY'] || process.env['AI_INTEGRATIONS_GEMINI_API_KEY'];
 
@@ -82,93 +118,118 @@ app.post('/api/chat', async (req, res) => {
 
     // ── Priority 1: SambaNova ──────────────────────────────────────────────────
     if (sambaKey) {
-      const sambaModel = process.env['SAMBANOVA_MODEL'] || 'Meta-Llama-3.1-70B-Instruct';
-      try {
-        const safeHistory = Array.isArray(history)
-          ? history.slice(-10).map((m) => ({
-              role: m.role === 'model' ? 'assistant' : 'user',
-              content: Array.isArray(m.parts) ? m.parts.map((p) => p?.text ?? '').join('') : '',
-            }))
-          : [];
+      const sambaModelsStr = process.env['SAMBANOVA_MODELS'] || process.env['SAMBANOVA_MODEL'] || "DeepSeek-V3.1,Meta-Llama-3.3-70B-Instruct";
+      const sambaModels = sambaModelsStr.split(',').map(m => m.trim()).filter(Boolean);
+      let sambaSuccess = false;
+      for (const sambaModel of sambaModels) {
+        const remaining = getRemainingTime();
+        if (remaining < 1000) break; // Not enough time left for this request
 
-        const messages = [
-          { role: 'system', content: SYSTEM_PROMPT },
-          ...safeHistory,
-          { role: 'user', content: trimmed },
-        ];
+        try {
+          const safeHistory = Array.isArray(history)
+            ? history.slice(-10).map((m) => ({
+                role: m.role === 'model' ? 'assistant' : 'user',
+                content: Array.isArray(m.parts) ? m.parts.map((p) => p?.text ?? '').join('') : '',
+              }))
+            : [];
 
-        const upstream = await fetch('https://api.sambanova.ai/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${sambaKey}`,
-          },
-          body: JSON.stringify({
-            model: sambaModel,
-            messages,
-            temperature: 0.4,
-            max_tokens: 1024,
-          }),
-          signal: AbortSignal.timeout(20000),
-        });
+          const messages = [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...safeHistory,
+            { role: 'user', content: trimmed },
+          ];
 
-        if (upstream.ok) {
-          const json = (await upstream.json()) as any;
-          const reply = (json?.choices?.[0]?.message?.content as string) ?? '';
-          if (reply) {
-            res.json({ reply });
-            return;
+          const upstream = await fetch('https://api.sambanova.ai/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${sambaKey}`,
+            },
+            body: JSON.stringify({
+              model: sambaModel,
+              messages,
+              temperature: 0.4,
+              max_tokens: 1024,
+            }),
+            signal: AbortSignal.timeout(Math.min(12000, remaining)),
+          });
+
+          if (upstream.ok) {
+            const json = (await upstream.json()) as any;
+            const reply = (json?.choices?.[0]?.message?.content as string) ?? '';
+            if (reply) {
+              res.json({ reply });
+              sambaSuccess = true;
+              break;
+            }
+            console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: upstream.status, reason: 'empty_reply' }));
+          } else {
+            console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: upstream.status, reason: 'http_error' }));
+            if (upstream.status === 404 || upstream.status === 429 || upstream.status >= 500) continue;
           }
-          console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: upstream.status, reason: 'empty_reply' }));
-        } else {
-          console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: upstream.status, reason: 'http_error' }));
+        } catch (err: any) {
+          console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: null, reason: err.name === 'TimeoutError' ? 'timeout' : 'exception' }));
+          continue;
         }
-      } catch (err: any) {
-        console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: null, reason: err.name === 'TimeoutError' ? 'timeout' : 'exception' }));
       }
+      if (sambaSuccess) return;
     }
 
     // ── Priority 2: Gemini ─────────────────────────────────────────────────────
     if (geminiKey) {
-      const geminiModel = process.env['GEMINI_MODEL'] || 'gemini-3.5-flash';
-      try {
-        const geminiBaseUrl =
-          process.env['AI_INTEGRATIONS_GEMINI_BASE_URL'] ||
-          'https://generativelanguage.googleapis.com/v1beta';
+      const geminiModelsStr = process.env['GEMINI_MODELS'] || process.env['GEMINI_MODEL'] || "gemini-3.5-flash";
+      const geminiModels = geminiModelsStr.split(',').map(m => m.trim()).filter(Boolean);
+      let geminiSuccess = false;
+      for (const geminiModel of geminiModels) {
+        const remaining = getRemainingTime();
+        if (remaining < 1000) break;
 
-        const contents = [
-          ...history.slice(-10),
-          { role: 'user', parts: [{ text: trimmed }] },
-        ];
+        try {
+          const geminiBaseUrl =
+            process.env['AI_INTEGRATIONS_GEMINI_BASE_URL'] ||
+            'https://generativelanguage.googleapis.com/v1beta';
 
-        const url = `${geminiBaseUrl.replace(/\/$/, '')}/models/${geminiModel}:generateContent?key=${encodeURIComponent(geminiKey)}`;
+          const contents = [
+            ...history.slice(-10),
+            { role: 'user', parts: [{ text: trimmed }] },
+          ];
 
-        const upstream = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-            contents,
-            generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
-          }),
-          signal: AbortSignal.timeout(20000),
-        });
+          const url = `${geminiBaseUrl.replace(/\\/$/, '')}/models/${geminiModel}:generateContent`;
 
-        if (upstream.ok) {
-          const json = (await upstream.json()) as any;
-          const reply =
-            json?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? '').join('') ?? '';
-          if (reply) {
-            res.json({ reply });
-            return;
+          const upstream = await fetch(url, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-goog-api-key': geminiKey
+            },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+              contents,
+              generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+            }),
+            signal: AbortSignal.timeout(Math.min(12000, remaining)),
+          });
+
+          if (upstream.ok) {
+            const json = (await upstream.json()) as any;
+            const reply =
+              json?.candidates?.[0]?.content?.parts?.map((p: any) => p?.text ?? '').join('') ?? '';
+            if (reply) {
+              res.json({ reply });
+              geminiSuccess = true;
+              break;
+            }
+            console.warn(JSON.stringify({ provider: 'gemini', model: geminiModel, status: upstream.status, reason: 'empty_reply' }));
+          } else {
+            console.warn(JSON.stringify({ provider: 'gemini', model: geminiModel, status: upstream.status, reason: 'http_error' }));
+            if (upstream.status === 404 || upstream.status === 429 || upstream.status >= 500) continue;
           }
-          console.warn(JSON.stringify({ provider: 'gemini', model: geminiModel, status: upstream.status, reason: 'empty_reply' }));
-        } else {
-          console.warn(JSON.stringify({ provider: 'gemini', model: geminiModel, status: upstream.status, reason: 'http_error' }));
+        } catch (err: any) {
+          console.warn(JSON.stringify({ provider: 'gemini', model: geminiModel, status: null, reason: err.name === 'TimeoutError' ? 'timeout' : 'exception' }));
+          continue;
         }
-      } catch (err: any) {
-        console.warn(JSON.stringify({ provider: 'gemini', model: geminiModel, status: null, reason: err.name === 'TimeoutError' ? 'timeout' : 'exception' }));
       }
+      if (geminiSuccess) return;
     }
 
     // ── All providers exhausted ────────────────────────────────────────────────
@@ -181,7 +242,7 @@ app.post('/api/chat', async (req, res) => {
     }
   } catch (err) {
     console.error('[Smit AI Sahayak] Chat error:', err);
-    res.status(500).json({ error: 'AI service error', reply: 'ક્ષમા કરશો, સર્વર ભૂલ આવી.' });
+    res.status(500).json({ error: 'AI service error', reply: 'ક્ષમા કરશો, અડચણ આવી. ફરી try કરો.' });
   }
 });
 
