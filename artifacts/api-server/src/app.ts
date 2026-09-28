@@ -80,8 +80,9 @@ app.post('/api/chat', async (req, res) => {
 
     const trimmed = message.trim().slice(0, 1000);
 
-    // ── Priority 1: SambaNova (DeepSeek) ───────────────────────────────────────
+    // ── Priority 1: SambaNova ──────────────────────────────────────────────────
     if (sambaKey) {
+      const sambaModel = process.env['SAMBANOVA_MODEL'] || 'Meta-Llama-3.1-70B-Instruct';
       try {
         const safeHistory = Array.isArray(history)
           ? history.slice(-10).map((m) => ({
@@ -103,7 +104,7 @@ app.post('/api/chat', async (req, res) => {
             Authorization: `Bearer ${sambaKey}`,
           },
           body: JSON.stringify({
-            model: 'DeepSeek-V3-0324',
+            model: sambaModel,
             messages,
             temperature: 0.4,
             max_tokens: 1024,
@@ -118,18 +119,18 @@ app.post('/api/chat', async (req, res) => {
             res.json({ reply });
             return;
           }
-          console.warn('[Smit AI Sahayak] SambaNova empty reply — falling through to Gemini');
+          console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: upstream.status, reason: 'empty_reply' }));
         } else {
-          const text = await upstream.text();
-          console.warn(`[Smit AI Sahayak] SambaNova ${upstream.status}: ${text.slice(0, 200)} — falling through to Gemini`);
+          console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: upstream.status, reason: 'http_error' }));
         }
-      } catch (err) {
-        console.warn('[Smit AI Sahayak] SambaNova call failed — falling through to Gemini:', err);
+      } catch (err: any) {
+        console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: null, reason: err.name === 'TimeoutError' ? 'timeout' : 'exception' }));
       }
     }
 
     // ── Priority 2: Gemini ─────────────────────────────────────────────────────
     if (geminiKey) {
+      const geminiModel = process.env['GEMINI_MODEL'] || 'gemini-3.5-flash';
       try {
         const geminiBaseUrl =
           process.env['AI_INTEGRATIONS_GEMINI_BASE_URL'] ||
@@ -140,7 +141,7 @@ app.post('/api/chat', async (req, res) => {
           { role: 'user', parts: [{ text: trimmed }] },
         ];
 
-        const url = `${geminiBaseUrl.replace(/\/$/, '')}/models/gemini-2.0-flash:generateContent?key=${encodeURIComponent(geminiKey)}`;
+        const url = `${geminiBaseUrl.replace(/\/$/, '')}/models/${geminiModel}:generateContent?key=${encodeURIComponent(geminiKey)}`;
 
         const upstream = await fetch(url, {
           method: 'POST',
@@ -161,13 +162,12 @@ app.post('/api/chat', async (req, res) => {
             res.json({ reply });
             return;
           }
-          console.warn('[Smit AI Sahayak] Gemini empty reply');
+          console.warn(JSON.stringify({ provider: 'gemini', model: geminiModel, status: upstream.status, reason: 'empty_reply' }));
         } else {
-          const text = await upstream.text();
-          console.warn(`[Smit AI Sahayak] Gemini ${upstream.status}: ${text.slice(0, 200)}`);
+          console.warn(JSON.stringify({ provider: 'gemini', model: geminiModel, status: upstream.status, reason: 'http_error' }));
         }
-      } catch (err) {
-        console.warn('[Smit AI Sahayak] Gemini call failed:', err);
+      } catch (err: any) {
+        console.warn(JSON.stringify({ provider: 'gemini', model: geminiModel, status: null, reason: err.name === 'TimeoutError' ? 'timeout' : 'exception' }));
       }
     }
 
