@@ -74,7 +74,7 @@ app.get('/api/health', (_req, res) => {
 // Provider waterfall: SambaNova -> Gemini
 app.post('/api/chat', async (req, res) => {
   const requestStartTime = Date.now();
-  const OVERALL_DEADLINE_MS = 15000;
+  const OVERALL_DEADLINE_MS = 30000;
   
   const getRemainingTime = () => Math.max(0, OVERALL_DEADLINE_MS - (Date.now() - requestStartTime));
 
@@ -135,7 +135,7 @@ app.post('/api/chat', async (req, res) => {
               temperature: 0.4,
               max_tokens: 1024,
             }),
-            signal: AbortSignal.timeout(Math.min(10000, remaining)),
+            signal: AbortSignal.timeout(Math.min(20000, remaining)),
           });
 
           if (upstream.status === 402) {
@@ -198,7 +198,7 @@ app.post('/api/chat', async (req, res) => {
               contents,
               generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
             }),
-            signal: AbortSignal.timeout(Math.min(10000, remaining)),
+            signal: AbortSignal.timeout(Math.min(20000, remaining)),
           });
 
           if (upstream.ok) {
