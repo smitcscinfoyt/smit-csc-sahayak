@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+
+let isSambaNovaDisabled = false;
 import { readFileSync, existsSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -90,7 +92,7 @@ app.get('/api/health', (_req, res) => {
 // Provider waterfall: SambaNova -> Gemini
 app.post('/api/chat', async (req, res) => {
   const requestStartTime = Date.now();
-  const OVERALL_DEADLINE_MS = 22000;
+  const OVERALL_DEADLINE_MS = 15000;
   
   const getRemainingTime = () => Math.max(0, OVERALL_DEADLINE_MS - (Date.now() - requestStartTime));
 
@@ -117,7 +119,7 @@ app.post('/api/chat', async (req, res) => {
     const trimmed = message.trim().slice(0, 1000);
 
     // ── Priority 1: SambaNova ──────────────────────────────────────────────────
-    if (sambaKey) {
+    if (sambaKey && !isSambaNovaDisabled) {
       const sambaModelsStr = process.env['SAMBANOVA_MODELS'] || process.env['SAMBANOVA_MODEL'] || "DeepSeek-V3.1,Meta-Llama-3.3-70B-Instruct";
       const sambaModels = sambaModelsStr.split(',').map(m => m.trim()).filter(Boolean);
       let sambaSuccess = false;
@@ -151,8 +153,14 @@ app.post('/api/chat', async (req, res) => {
               temperature: 0.4,
               max_tokens: 1024,
             }),
-            signal: AbortSignal.timeout(Math.min(12000, remaining)),
+            signal: AbortSignal.timeout(Math.min(10000, remaining)),
           });
+
+          if (upstream.status === 402) {
+            console.warn('[Smit AI Sahayak] SambaNova is disabled (402 Payment Required). Skipping for future requests.');
+            isSambaNovaDisabled = true;
+            break;
+          }
 
           if (upstream.ok) {
             const json = (await upstream.json()) as any;
@@ -166,6 +174,7 @@ app.post('/api/chat', async (req, res) => {
           } else {
             console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: upstream.status, reason: 'http_error' }));
             if (upstream.status === 404 || upstream.status === 429 || upstream.status >= 500) continue;
+            break;
           }
         } catch (err: any) {
           console.warn(JSON.stringify({ provider: 'sambanova', model: sambaModel, status: null, reason: err.name === 'TimeoutError' ? 'timeout' : 'exception' }));
@@ -177,7 +186,7 @@ app.post('/api/chat', async (req, res) => {
 
     // ── Priority 2: Gemini ─────────────────────────────────────────────────────
     if (geminiKey) {
-      const geminiModelsStr = process.env['GEMINI_MODELS'] || process.env['GEMINI_MODEL'] || "gemini-3.5-flash";
+      const geminiModelsStr = process.env['GEMINI_MODELS'] || process.env['GEMINI_MODEL'] || "gemini-3.8-flash,gemini-3.7-flash,gemini-flash-latest";
       const geminiModels = geminiModelsStr.split(',').map(m => m.trim()).filter(Boolean);
       let geminiSuccess = false;
       for (const geminiModel of geminiModels) {
@@ -207,7 +216,7 @@ app.post('/api/chat', async (req, res) => {
               contents,
               generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
             }),
-            signal: AbortSignal.timeout(Math.min(12000, remaining)),
+            signal: AbortSignal.timeout(Math.min(10000, remaining)),
           });
 
           if (upstream.ok) {
