@@ -186,7 +186,7 @@ app.post('/api/chat', async (req, res) => {
 
     // ── Priority 2: Gemini ─────────────────────────────────────────────────────
     if (geminiKey) {
-      const geminiModelsStr = process.env['GEMINI_MODELS'] || process.env['GEMINI_MODEL'] || "gemini-3.8-flash,gemini-3.7-flash,gemini-flash-latest";
+      const geminiModelsStr = process.env['GEMINI_MODELS'] || process.env['GEMINI_MODEL'] || "gemini-3.5-flash,gemini-3.8-flash,gemini-3.7-flash,gemini-flash-latest";
       const geminiModels = geminiModelsStr.split(',').map(m => m.trim()).filter(Boolean);
       let geminiSuccess = false;
       for (const geminiModel of geminiModels) {
