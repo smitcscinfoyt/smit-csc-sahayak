@@ -12,6 +12,7 @@ const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
+
 // Load knowledge.txt from repo root
 const knowledgePath = join(__dirname, '../../../knowledge.txt');
 let knowledgeBase = '';
@@ -22,27 +23,8 @@ if (existsSync(knowledgePath)) {
   console.warn('[Smit AI Sahayak] knowledge.txt not found — running without custom context');
 }
 
-const SYSTEM_PROMPT = `You are Smit AI Sahayak, a helpful AI assistant for Smit CSC Info.
+const SYSTEM_PROMPT = "You are Smit AI Sahayak, a helpful AI assistant for Smit CSC Info.\n\n  IMPORTANT FACTS — always follow exactly:\n  1. Smit CSC Info — owner/founder/creator: SAGAR Kindarakhediya. Never say \"Smit Patel\" or any other name.\n  2. Contact info — always give these social media links, NOT the CSC government helpline:\n     Facebook: https://www.facebook.com/share/1KQkXYXKcQ/\n     Instagram: https://www.instagram.com/smit_csc_info\n     YouTube: https://www.youtube.com/@SmitCSCInfo\n     WhatsApp Group: https://chat.whatsapp.com/CS5vmo9R3yXKxlvBHP0EYh\n  3. CSC Helpline 1800-3000-3468 is the Indian government helpline — NOT SAGAR's contact.\n\n  FORMATTING RULES:\n  - Always respond in Gujarati unless user writes in English.\n  - Do NOT use markdown: no **bold**, no ###headings, no lists with **.\n  - Use plain text with line breaks for structure.\n  - Be concise and practical.\n\n  Knowledge Base:\n" + knowledgeBase;
 
-  IMPORTANT FACTS — always follow exactly:
-  1. Smit CSC Info — owner/founder/creator: SAGAR Kindarakhediya. Never say "Smit Patel" or any other name.
-  2. Contact info — always give these social media links, NOT the CSC government helpline:
-     Facebook: https://www.facebook.com/share/1KQkXYXKcQ/
-     Instagram: https://www.instagram.com/smit_csc_info
-     YouTube: https://www.youtube.com/@SmitCSCInfo
-     WhatsApp Group: https://chat.whatsapp.com/CS5vmo9R3yXKxlvBHP0EYh
-  3. CSC Helpline 1800-3000-3468 is the Indian government helpline — NOT SAGAR's contact.
-
-  FORMATTING RULES:
-  - Always respond in Gujarati unless user writes in English.
-  - Do NOT use markdown: no **bold**, no ###headings, no lists with **.
-  - Use plain text with line breaks for structure.
-  - Be concise and practical.
-
-  Knowledge Base:
-  ${knowledgeBase}`
-
-// --- STARTUP PROVIDER CHECK ---
 (async function verifyProviders() {
   const sambaKey = process.env['SAMBANOVA_API_KEY'];
   if (sambaKey) {
@@ -62,7 +44,7 @@ const SYSTEM_PROMPT = `You are Smit AI Sahayak, a helpful AI assistant for Smit 
     try {
       const geminiBaseUrl = process.env['AI_INTEGRATIONS_GEMINI_BASE_URL'] || 'https://generativelanguage.googleapis.com/v1beta';
       // no keys in URL - using x-goog-api-key header
-      const res = await fetch(`${geminiBaseUrl.replace(/\\/$/, '')}/models`, {
+      const res = await fetch(`${geminiBaseUrl.replace(new RegExp('/$'), '')}/models`, {
         headers: { 'x-goog-api-key': geminiKey },
         signal: AbortSignal.timeout(5000)
       });
@@ -203,7 +185,7 @@ app.post('/api/chat', async (req, res) => {
             { role: 'user', parts: [{ text: trimmed }] },
           ];
 
-          const url = `${geminiBaseUrl.replace(/\\/$/, '')}/models/${geminiModel}:generateContent`;
+          const url = `${geminiBaseUrl.replace(new RegExp('/$'), '')}/models/${geminiModel}:generateContent`;
 
           const upstream = await fetch(url, {
             method: 'POST',
