@@ -560,5 +560,5 @@ Browser-based, Browser-side processing — data server પર store નહીં
   - **YouTube:** https://www.youtube.com/@SmitCSCInfo
   - **WhatsApp Group:** https://chat.whatsapp.com/CS5vmo9R3yXKxlvBHP0EYh
 
-  Note: CSC Helpline (1800-3000-3468) એ ભારત સરકારની CSC helpline છે — Smit CSC Info owner નો contact નહીં.
+  Note: CSC Helpline () એ ભારત સરકારની CSC helpline છે — Smit CSC Info owner નો contact નહીં.
   
